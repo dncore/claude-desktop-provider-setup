@@ -9,10 +9,10 @@
   "deploymentMode": "3p",
   "helperTtlSec": 900,
   "models": [
-    { "name": "gw-default" },
-    { "name": "gw-opus",   "anthropicFamilyTier": "opus",   "isFamilyDefault": true },
-    { "name": "gw-sonnet", "anthropicFamilyTier": "sonnet", "isFamilyDefault": true },
-    { "name": "gw-haiku",  "anthropicFamilyTier": "haiku",  "isFamilyDefault": true }
+    { "name": "claude-sonnet-5" },
+    { "name": "claude-opus-5",   "anthropicFamilyTier": "opus",   "isFamilyDefault": true },
+    { "name": "claude-sonnet-4-5", "anthropicFamilyTier": "sonnet", "isFamilyDefault": true },
+    { "name": "claude-haiku-5",  "anthropicFamilyTier": "haiku",  "isFamilyDefault": true }
   ],
   "warnings": [],
   "errors": []

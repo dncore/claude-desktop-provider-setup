@@ -2,5 +2,5 @@
   "ANTHROPIC_BASE_URL": "https://gw.example.com/api/anthropic",
   "ANTHROPIC_AUTH_TOKEN": "tok-cccccccccccccccc",
   "ANTHROPIC_API_KEY": "tok-cccccccccccccccc",
-  "ANTHROPIC_MODEL": "gw-default"
+  "ANTHROPIC_MODEL": "claude-sonnet-5"
 } }

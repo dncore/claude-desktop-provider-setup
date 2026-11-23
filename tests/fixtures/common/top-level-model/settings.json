@@ -1,4 +1,4 @@
-{ "model": "m-top-level",
+{ "model": "claude-top-level-model",
   "env": {
     "ANTHROPIC_BASE_URL": "https://gw.example.com/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "tok-aaaaaaaaaaaaaaaa"

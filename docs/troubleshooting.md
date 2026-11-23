@@ -99,6 +99,27 @@ or pass `--allow-unlisted-models` if you know the gateway serves it.
 3. **Check `deploymentMode`.** `3p` hides the Claude.ai option. If something set
    `deploymentMode` to `1p`, the app always signs in to Claude.ai.
 
+## "Your organization hasn't configured any models"
+
+Claude Desktop accepts only `inferenceModels` entries whose `name` references an
+Anthropic model. Anything else is discarded, and because the presence of
+`inferenceModels` also suppresses model discovery, an all-discarded list leaves
+the picker empty. Check the app log
+(`...\LocalCache\Local\Claude-3p\logs\main.log` on an MSIX install) for:
+
+```
+inferenceModels: "X" is not an Anthropic model and was removed from the list
+Model discovery: skipped (inferenceModels obviates discovery); picker = 0 (empty)
+```
+
+The tool now detects this before writing: it drops such IDs and, when none
+survive, omits `inferenceModels` so the app discovers the gateway's list
+instead. You will see `model-not-anthropic` and `models-discovery-fallback`
+warnings. Re-run `update` to apply it.
+
+If it still fails, the gateway's `/v1/models` may be unreachable from the
+machine — discovery needs it whenever the list is omitted.
+
 ## It connects, but every turn fails
 
 Run `.\install.bat verify` / `./install.command verify`. Then:

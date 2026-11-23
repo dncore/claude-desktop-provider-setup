@@ -176,7 +176,42 @@ From §2 precedence, resolve:
 
 Deduplication compares IDs with ordinal (byte) equality. No case folding.
 
-### 5.3 Discovery interaction
+### 5.3 Two normalisations Claude Desktop forces
+
+**[LOCAL]** established against Claude Desktop 6.28899.6.0. Both are recorded in
+`docs/research-findings.md` §7b.
+
+**(a) The `[1m]` selector suffix is not part of a model ID.**
+Claude Code documents `[1m]` as a suffix you append to a model alias or full
+name to request the 1M context window. It is a Claude Code selector, not
+something the provider serves. The tool strips one trailing `[1m]`
+(case-insensitive), sets `supports1m: true` on that entry, and warns
+`model-1m-suffix-stripped`. Emitting the raw value makes the model unusable.
+
+**(b) Claude Desktop discards any model ID that does not reference an Anthropic
+model.** Given `inferenceModels` entries whose `name` is, say,
+`deepseek-v4.1-flash`, the app warns *"is not an Anthropic model and was removed
+from the list — expected a gateway model route referencing an Anthropic model
+(e.g. claude-sonnet-4-5, anthropic/claude-\*)"* and drops the entry. `behavesAs`
+does not prevent the drop. Because the presence of `inferenceModels` also
+suppresses model discovery, an all-dropped list leaves the picker empty and the
+app reports "Your organization hasn't configured any models".
+
+Therefore, after building the list:
+
+1. An entry qualifies when its `name` contains `claude`, ASCII case-insensitive
+   — the only property shared by both accepted examples.
+2. If **no** entry qualifies, omit `inferenceModels` from the configuration
+   entirely and warn `models-discovery-fallback`. Omitting it is the only way
+   to let the app populate its picker from the gateway's `/v1/models`.
+3. If **some** entries qualify, keep those in their original order and drop the
+   rest, warning `model-not-anthropic` once per dropped ID.
+
+The tool never renames a model to make it qualify. A gateway that serves only
+non-Anthropic IDs needs Anthropic-named route aliases on the gateway side; that
+is the operator's call, not something a client-side rename can fake.
+
+### 5.4 Discovery interaction
 
 `anthropicFamilyTier` is emitted by default. Because tier aliases interact with
 model discovery, the tool emits `modelDiscoveryEnabled` **only** when the user

@@ -1,4 +1,4 @@
 { "schemaVersion": 1, "models": [
-  { "id": "gw-opus",    "labelOverride": "Opus (gateway)", "supports1m": true },
-  { "id": "gw-default", "anthropicFamilyTier": "mythos" }
+  { "id": "claude-opus-5",    "labelOverride": "Opus (gateway)", "supports1m": true },
+  { "id": "claude-sonnet-5", "anthropicFamilyTier": "mythos" }
 ] }

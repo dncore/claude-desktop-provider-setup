@@ -214,11 +214,54 @@ function Find-ModelIndex {
 
 function Add-ModelIfAbsent {
     param([string]$Id)
-    $idx = Find-ModelIndex $Id
-    if ($idx -ge 0) { return $idx }
-    Assert-Clean $Id 'model id'
-    [void]$script:Core.Models.Add((New-ModelEntry $Id))
-    return ($script:Core.Models.Count - 1)
+
+    # Claude Code's [1m] selector suffix is not part of a provider model ID
+    # (SPEC 5.3a). PowerShell's -match is case-insensitive, so [1M] is caught too.
+    $clean = $Id
+    $oneshot = $false
+    if ($Id -match '\[1m\]$') {
+        $clean = $Id.Substring(0, $Id.Length - 4)
+        $oneshot = $true
+    }
+
+    $idx = Find-ModelIndex $clean
+    if ($idx -ge 0) {
+        if ($oneshot) { $script:Core.Models[$idx].supports1m = 'true' }
+        return $idx
+    }
+    Assert-Clean $clean 'model id'
+    [void]$script:Core.Models.Add((New-ModelEntry $clean))
+    $idx = $script:Core.Models.Count - 1
+    if ($oneshot) {
+        $script:Core.Models[$idx].supports1m = 'true'
+        Add-Warning 'model-1m-suffix-stripped' $clean
+    }
+    return $idx
+}
+
+# Claude Desktop discards model IDs that do not reference an Anthropic model,
+# and the mere presence of inferenceModels suppresses discovery, so an
+# all-discarded list leaves the picker empty (SPEC 5.3b).
+function Apply-AnthropicFilter {
+    if ($script:Core.Models.Count -eq 0) { return }
+
+    $kept = New-Object System.Collections.ArrayList
+    foreach ($m in $script:Core.Models) {
+        if ($m.name.ToLowerInvariant().Contains('claude')) {
+            [void]$kept.Add($m)
+        } else {
+            Add-Warning 'model-not-anthropic' $m.name
+        }
+    }
+
+    if ($kept.Count -eq 0) {
+        $script:Core.Models.Clear()
+        Add-Warning 'models-discovery-fallback' `
+            'no configured model references an Anthropic model; leaving the list unset so Claude Desktop can discover models'
+        return
+    }
+
+    $script:Core.Models = $kept
 }
 
 function Read-MappingFile {
@@ -305,6 +348,9 @@ Set it in ANTHROPIC_MODEL or ANTHROPIC_DEFAULT_*_MODEL, or pass
         Add-Warning 'no-model-config' 'no model information in the Claude Code configuration'
         return
     }
+
+    Apply-AnthropicFilter
+    if ($script:Core.Models.Count -eq 0) { return }
 
     $hasTier = $false
     foreach ($m in $script:Core.Models) { if ($m.anthropicFamilyTier -ne '') { $hasTier = $true; break } }

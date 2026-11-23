@@ -1,4 +1,4 @@
 { "env": {
   "ANTHROPIC_BASE_URL": "https://gw.example.com/api/anthropic",
-  "ANTHROPIC_MODEL": "gw-default"
+  "ANTHROPIC_MODEL": "claude-sonnet-5"
 } }

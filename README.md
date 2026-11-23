@@ -300,6 +300,11 @@ Windows: `%LOCALAPPDATA%\{Claude-3p\configLibrary,claude-desktop-provider-setup}
 - **No model request was completed end to end**, because the test machine had
   no reachable gateway. The app did start in third-party mode with a
   tool-written configuration.
+- **Gateways that serve only non-Anthropic model IDs cannot pin models.**
+  Claude Desktop discards model IDs that do not reference an Anthropic model,
+  so the tool omits `inferenceModels` and lets discovery populate the picker.
+  To pin a specific model, the gateway must expose Anthropic-named route
+  aliases. See `docs/research-findings.md` §7b.
 - **`inferenceGatewayBaseUrl` validation rules are unpublished.** The URL is
   passed through unchanged; no `/v1` suffix is added.
 - **Model discovery with tier aliases is under-specified.** See above.

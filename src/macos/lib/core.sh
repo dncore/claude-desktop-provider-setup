@@ -40,6 +40,7 @@ CORE_MAP_MAXEFFORT=()
 CORE_PICKED=""
 CORE_IDX=-1
 CORE_HAS_TIER=0
+CORE_FILTER_FELL_BACK=0
 
 # --- pure readers ---------------------------------------------------------
 
@@ -231,11 +232,24 @@ core_model_index() {
   CORE_IDX=-1
 }
 
-# core_model_ensure <id> -> CORE_IDX, appending when absent
+# core_model_ensure <id> -> CORE_IDX, appending when absent.
+# Strips Claude Code's trailing [1m] selector (SPEC 5.3a) and records that the
+# entry offers 1M context.
 core_model_ensure() {
-  local id="$1"
+  local raw="$1" id lower oneshot
+  id="$raw"
+  oneshot=""
+  lower="$(printf '%s' "$id" | tr 'A-Z' 'a-z')"
+  case "$lower" in
+    *'[1m]') id="${id:0:$((${#id} - 4))}"; oneshot="true" ;;
+  esac
+
   core_model_index "$id"
-  [ "$CORE_IDX" != "-1" ] && return 0
+  if [ "$CORE_IDX" != "-1" ]; then
+    [ -n "$oneshot" ] && CORE_MODEL_1M[$CORE_IDX]="true"
+    return 0
+  fi
+
   cds_assert_clean "$id" "model id"
   CORE_IDX="${#CORE_MODEL_IDS[@]}"
   CORE_MODEL_IDS[$CORE_IDX]="$id"
@@ -246,6 +260,56 @@ core_model_ensure() {
   CORE_MODEL_FAMDEFAULT[$CORE_IDX]=""
   CORE_MODEL_BEHAVES[$CORE_IDX]=""
   CORE_MODEL_MAXEFFORT[$CORE_IDX]=""
+  if [ -n "$oneshot" ]; then
+    CORE_MODEL_1M[$CORE_IDX]="true"
+    cds_warn model-1m-suffix-stripped "$id"
+  fi
+}
+
+# Drop entries Claude Desktop would discard anyway (SPEC 5.3b). Keeping them
+# would suppress model discovery and leave the picker empty.
+core_apply_anthropic_filter() {
+  local i=0 n kept=0 lower
+  n="${#CORE_MODEL_IDS[@]}"
+  [ "$n" -gt 0 ] || return 0
+
+  local -a k_id k_label k_1m k_p1m k_tier k_fam k_beh k_max
+  while [ "$i" -lt "$n" ]; do
+    lower="$(printf '%s' "${CORE_MODEL_IDS[$i]}" | tr 'A-Z' 'a-z')"
+    case "$lower" in
+      *claude*)
+        k_id[$kept]="${CORE_MODEL_IDS[$i]}"
+        k_label[$kept]="${CORE_MODEL_LABEL[$i]}"
+        k_1m[$kept]="${CORE_MODEL_1M[$i]}"
+        k_p1m[$kept]="${CORE_MODEL_PREFER1M[$i]}"
+        k_tier[$kept]="${CORE_MODEL_TIER[$i]}"
+        k_fam[$kept]="${CORE_MODEL_FAMDEFAULT[$i]}"
+        k_beh[$kept]="${CORE_MODEL_BEHAVES[$i]}"
+        k_max[$kept]="${CORE_MODEL_MAXEFFORT[$i]}"
+        kept=$((kept + 1))
+        ;;
+      *) cds_warn model-not-anthropic "${CORE_MODEL_IDS[$i]}" ;;
+    esac
+    i=$((i + 1))
+  done
+
+  if [ "$kept" -eq 0 ]; then
+    CORE_MODEL_IDS=(); CORE_MODEL_LABEL=(); CORE_MODEL_1M=(); CORE_MODEL_PREFER1M=()
+    CORE_MODEL_TIER=(); CORE_MODEL_FAMDEFAULT=(); CORE_MODEL_BEHAVES=(); CORE_MODEL_MAXEFFORT=()
+    CORE_FILTER_FELL_BACK=1
+    cds_warn models-discovery-fallback \
+      "no configured model references an Anthropic model; leaving the list unset so Claude Desktop can discover models"
+    return 0
+  fi
+
+  CORE_MODEL_IDS=("${k_id[@]}")
+  CORE_MODEL_LABEL=("${k_label[@]}")
+  CORE_MODEL_1M=("${k_1m[@]}")
+  CORE_MODEL_PREFER1M=("${k_p1m[@]}")
+  CORE_MODEL_TIER=("${k_tier[@]}")
+  CORE_MODEL_FAMDEFAULT=("${k_fam[@]}")
+  CORE_MODEL_BEHAVES=("${k_beh[@]}")
+  CORE_MODEL_MAXEFFORT=("${k_max[@]}")
 }
 
 Core_map_scalar() {
@@ -340,6 +404,13 @@ Set it in ANTHROPIC_MODEL or ANTHROPIC_DEFAULT_*_MODEL, or pass
 
   if [ "${#CORE_MODEL_IDS[@]}" -eq 0 ]; then
     cds_warn no-model-config "no model information in the Claude Code configuration"
+    return 0
+  fi
+
+  core_apply_anthropic_filter
+
+  if [ "${#CORE_MODEL_IDS[@]}" -eq 0 ]; then
+    # The filter already warned models-discovery-fallback.
     return 0
   fi
 

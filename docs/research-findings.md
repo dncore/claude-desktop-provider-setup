@@ -281,6 +281,49 @@ remote: false, managedKeys: [] }`, confirming no policy was involved.
 `…\Packages\Claude_pzs8sxrjxfjjc\LocalCache`, which this implementation
 independently rediscovered before noticing that sentence.
 
+## 7b. Model IDs Claude Desktop refuses, and the discovery trap
+
+**[LOCAL]** Established against Claude Desktop 6.28899.6.0 with a gateway that
+serves non-Anthropic model IDs (`deepseek-v4.1-flash`, `glm-*`, `qwen-*`).
+
+Three facts combine into a failure that looks unrelated to its cause:
+
+1. **Non-Anthropic IDs are discarded.** For each `inferenceModels` entry whose
+   `name` does not reference an Anthropic model, the app logs
+   *"`X` is not an Anthropic model and was removed from the list — expected a
+   gateway model route referencing an Anthropic model (e.g. `claude-sonnet-4-5`,
+   `anthropic/claude-*`). Name routes to match the underlying model."* and drops
+   it. Setting `behavesAs` does **not** prevent the drop; verified by experiment.
+2. **`inferenceModels` suppresses discovery.** When the key is present the app
+   logs *"Model discovery: skipped (inferenceModels obviates discovery)"*.
+3. Therefore an all-discarded list yields `picker = 0 (empty)` and the user sees
+   **"Your organization hasn't configured any models."** There is no fallback.
+
+Removing `inferenceModels` entirely made the same gateway work:
+*"Model discovery: 3 found in 583 ms; picker = 3 (discovery)"*.
+
+**[LOCAL]** Also observed: `anthropicFamilyTier` is warned against with *"value
+matches a known non-Anthropic model fragment; ignoring"* once the model itself
+has been discarded, so a tier on a dropped entry is meaningless rather than
+harmful.
+
+**[DOC]** `[1m]` is a Claude Code selector appended to a model alias or full
+name to request the 1M context window. It is not part of any provider's model
+ID, so copying it into `inferenceModels` produces an ID the gateway does not
+serve.
+
+**Consequences encoded in `SPEC.md` §5.3:** strip `[1m]` and set
+`supports1m`; drop non-Anthropic IDs; and when nothing survives, omit
+`inferenceModels` so discovery can populate the picker.
+
+**What this means for a gateway operator:** a gateway that serves only
+non-Anthropic IDs can still drive Claude Desktop, but only through discovery,
+and the user cannot pin a specific model in the picker. To pin anything, the
+gateway must expose Anthropic-named route aliases (`claude-sonnet-4-5` →
+upstream model) that its own `/v1/messages` accepts. Renaming only on the
+client does not help: the app keeps the Anthropic name and sends it to the
+gateway, which then answers *"Model claude-sonnet-4-5 not found"*.
+
 ## 8. What remains unverified
 
 | Item | Status | Consequence for this project |

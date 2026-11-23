@@ -268,6 +268,10 @@ Windows：`%LOCALAPPDATA%\{Claude-3p\configLibrary,claude-desktop-provider-setup
   Claude Desktop 6.28899.6.0 验证，见 `docs/research-findings.md` §7a。
 - **端到端没有完成过一次真实模型请求**，因为测试机没有可达的网关。
   但应用确实以第三方模式启动，并读到了工具写入的配置。
+- **只提供非 Anthropic 模型 ID 的网关无法指定具体模型。** Claude Desktop 会丢弃
+  名称不指向 Anthropic 模型的条目，因此工具会省略 `inferenceModels`，
+  改由应用自动发现模型列表。若要固定某个模型，网关侧必须提供 Anthropic 名称的路由别名。
+  见 `docs/research-findings.md` §7b。
 - **`inferenceGatewayBaseUrl` 的校验规则未公开。** 工具原样透传，不追加 `/v1`。
 - **模型发现与层级别名的交互官方未完全说明。**
 - **只支持 `gateway` 供应商。**
