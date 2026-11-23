@@ -1,0 +1,4 @@
+{ "schemaVersion": 1, "models": [
+  { "id": "gw-opus",    "labelOverride": "Opus (gateway)", "supports1m": true },
+  { "id": "gw-default", "anthropicFamilyTier": "mythos" }
+] }

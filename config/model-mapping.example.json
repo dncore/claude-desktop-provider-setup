@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "models": [
+    {
+      "id": "claude-sonnet-5",
+      "labelOverride": "Sonnet 5 (gateway)",
+      "supports1m": false,
+      "anthropicFamilyTier": "sonnet",
+      "isFamilyDefault": true,
+      "behavesAs": "claude-sonnet-5",
+      "maxEffort": "high"
+    },
+    {
+      "id": "claude-opus-5",
+      "labelOverride": "Opus 5 (gateway)",
+      "anthropicFamilyTier": "opus",
+      "isFamilyDefault": true,
+      "behavesAs": "claude-opus-5"
+    },
+    {
+      "id": "us.anthropic.claude-haiku-5",
+      "labelOverride": "Haiku 5 (gateway)",
+      "anthropicFamilyTier": "haiku",
+      "isFamilyDefault": true,
+      "behavesAs": "claude-haiku-5"
+    }
+  ]
+}

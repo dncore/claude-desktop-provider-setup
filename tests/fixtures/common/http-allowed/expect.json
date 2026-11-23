@@ -1,0 +1,5 @@
+{ "ok": true, "baseUrl": "http://127.0.0.1:8080/api", "baseUrlHost": "127.0.0.1",
+  "authScheme": "bearer", "tokenSource": "settings", "tokenLength": 20,
+  "credentialKind": "helper-script", "deploymentMode": "3p", "helperTtlSec": 900,
+  "models": [ { "name": "gw-default" } ],
+  "warnings": [ { "kind": "insecure-http" } ], "errors": [] }

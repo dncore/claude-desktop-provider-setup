@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dncore/claude-desktop-provider-setup/config/schema/desktop-config.schema.json",
+  "title": "Claude Desktop third-party inference configuration (subset written by this tool)",
+  "description": "Validates the configuration object this tool writes into <configLibrary>/<uuid>.json. It is a strict subset of the full Claude Desktop key space: the tool refuses to emit keys outside it. additionalProperties is true because a user's existing file may legitimately carry other Claude Desktop keys that this tool does not manage.",
+  "type": "object",
+  "required": [
+    "inferenceProvider",
+    "inferenceGatewayBaseUrl",
+    "inferenceGatewayAuthScheme",
+    "inferenceCredentialKind"
+  ],
+  "dependentRequired": {
+    "inferenceCredentialHelper": ["inferenceCredentialKind"],
+    "inferenceCredentialHelperWindows": ["inferenceCredentialKind"],
+    "inferenceCredentialHelperTtlSec": ["inferenceCredentialHelper"]
+  },
+  "properties": {
+    "inferenceProvider": {
+      "enum": ["gateway"],
+      "description": "Only 'gateway' is emitted. 'anthropic' would bypass the user's gateway; bedrock/vertex/foundry/mantle need credentials this tool never sees."
+    },
+    "inferenceGatewayBaseUrl": {
+      "type": "string",
+      "pattern": "^https?://[^/?#]+(/[^\\s\"<>\\\\^`{|}]*)?$",
+      "minLength": 8,
+      "maxLength": 2048,
+      "description": "Passed through from ANTHROPIC_BASE_URL. No path suffix is appended."
+    },
+    "inferenceGatewayAuthScheme": {
+      "enum": ["bearer", "x-api-key"],
+      "description": "bearer for ANTHROPIC_AUTH_TOKEN, x-api-key for ANTHROPIC_API_KEY. Claude Desktop sends only one."
+    },
+    "inferenceCredentialKind": {
+      "const": "helper-script"
+    },
+    "inferenceCredentialHelper": {
+      "type": "string",
+      "pattern": "^/",
+      "description": "Absolute POSIX path. macOS and Linux run this."
+    },
+    "inferenceCredentialHelperWindows": {
+      "type": "string",
+      "pattern": "^[A-Za-z]:\\\\",
+      "description": "Absolute Windows path. Only Windows reads this key."
+    },
+    "inferenceCredentialHelperTtlSec": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "modelDiscoveryEnabled": {
+      "type": "boolean"
+    },
+    "deploymentMode": {
+      "enum": ["3p", "any"],
+      "description": "3p hides the Claude.ai sign-in and keeps the device on this connection."
+    },
+    "inferenceModels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "labelOverride": { "type": "string", "minLength": 1 },
+          "supports1m": { "type": "boolean" },
+          "prefer1m": { "type": "boolean" },
+          "anthropicFamilyTier": {
+            "enum": ["sonnet", "opus", "haiku", "fable", "mythos"]
+          },
+          "isFamilyDefault": { "type": "boolean" },
+          "behavesAs": { "type": "string", "minLength": 1 },
+          "maxEffort": {
+            "enum": ["low", "medium", "high", "xhigh", "max"]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": true,
+  "not": {
+    "anyOf": [
+      { "required": ["inferenceGatewayApiKey"] },
+      { "required": ["inferenceGatewayOidc"] },
+      { "required": ["inferenceAnthropicApiKey"] }
+    ]
+  }
+}

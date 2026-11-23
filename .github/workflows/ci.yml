@@ -1,0 +1,65 @@
+name: ci
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  sanitize:
+    name: sanitize (no secrets in the tree)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan for credentials, private hosts and personal paths
+        run: bash tools/sanitize-check.sh
+
+  shell-syntax:
+    name: shell syntax (macOS scripts)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse every shell file
+        run: |
+          set -e
+          fail=0
+          while IFS= read -r f; do
+            if ! bash -n "$f"; then echo "syntax error in $f"; fail=1; fi
+          done < <(find . -name '*.sh' -not -path './.git/*'; ls install.command uninstall.command)
+          exit "$fail"
+
+  macOS:
+    name: conformance (macOS 13+ / bash 3.2)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Report the environment under test
+        run: |
+          sw_vers
+          /bin/bash --version | head -1
+      - name: Run the shared fixture suite
+        run: bash tests/run-conformance.sh
+      - name: Run the lifecycle suite
+        run: bash tests/macos/test-lifecycle.sh
+
+  windows:
+    name: conformance (Windows 10+ / PowerShell 5.1)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Report the environment under test
+        shell: powershell
+        run: |
+          [Environment]::OSVersion.Version.ToString()
+          $PSVersionTable.PSVersion.ToString()
+      - name: Run the shared fixture suite
+        shell: powershell
+        run: .\tests\run-conformance.ps1
+      - name: Run the lifecycle suite
+        shell: powershell
+        run: .\tests\windows\test-lifecycle.ps1

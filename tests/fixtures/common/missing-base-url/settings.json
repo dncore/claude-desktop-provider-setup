@@ -1,0 +1,4 @@
+{ "env": {
+  "ANTHROPIC_AUTH_TOKEN": "tok-aaaaaaaaaaaaaaaa",
+  "ANTHROPIC_MODEL": "gw-default"
+} }

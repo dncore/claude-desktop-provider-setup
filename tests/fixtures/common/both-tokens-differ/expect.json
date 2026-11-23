@@ -1,0 +1,1 @@
+{ "ok": false, "warnings": [], "errors": [ { "kind": "auth-ambiguity", "code": 4 } ] }

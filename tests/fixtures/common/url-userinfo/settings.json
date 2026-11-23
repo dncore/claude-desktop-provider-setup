@@ -1,0 +1,4 @@
+{ "env": {
+  "ANTHROPIC_BASE_URL": "https://user:secret@gw.example.com/api",
+  "ANTHROPIC_AUTH_TOKEN": "tok-aaaaaaaaaaaaaaaa"
+} }

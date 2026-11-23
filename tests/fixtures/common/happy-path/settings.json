@@ -1,0 +1,10 @@
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://gw.example.com/api/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "tok-aaaaaaaaaaaaaaaa",
+    "ANTHROPIC_MODEL": "gw-default",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "gw-opus",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "gw-sonnet",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gw-haiku"
+  }
+}

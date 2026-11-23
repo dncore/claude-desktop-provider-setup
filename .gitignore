@@ -1,0 +1,31 @@
+# --- secrets and local configuration ---------------------------------------
+# The example is committed; a real mapping file is not, because model IDs can
+# name internal deployments.
+config/model-mapping.json
+
+# Optional local denylist of private strings for tools/sanitize-check.sh.
+# Never commit this file: it exists precisely to hold values that must not be
+# published.
+.sanitize-local-deny.txt
+
+# Anything that ever holds a credential or a private endpoint.
+*.token
+*.credential
+.env
+.env.*
+
+# --- test and run artefacts ------------------------------------------------
+*.log
+/tmp/
+/.cache/
+test-output/
+tests/**/actual.json
+
+# --- editor and OS noise ---------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*~

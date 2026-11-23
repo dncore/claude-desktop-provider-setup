@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dncore/claude-desktop-provider-setup/src/common/model-mapping.schema.json",
+  "title": "Model mapping file",
+  "description": "Optional. Adjusts how Claude Code model IDs are presented to Claude Desktop. models is an ARRAY, not an object keyed by model ID, because model IDs routinely contain dots (us.anthropic.claude-sonnet-5) and the macOS implementation must address entries by numeric index using plutil, which cannot traverse a dictionary key containing a dot. It cannot invent model IDs unless the caller passes --allow-unlisted-models.",
+  "type": "object",
+  "required": ["schemaVersion", "models"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "models": {
+      "type": "array",
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "The exact model ID as it appears in the Claude Code settings.",
+            "pattern": "^[^\"\\\\\\x00-\\x1f\\x7f]+$"
+          },
+          "labelOverride": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Text shown in the Desktop model picker."
+          },
+          "supports1m": {
+            "type": "boolean",
+            "description": "Only set when the deployment really accepts 1M-token context for this model."
+          },
+          "prefer1m": { "type": "boolean" },
+          "anthropicFamilyTier": {
+            "enum": ["sonnet", "opus", "haiku", "fable", "mythos"]
+          },
+          "isFamilyDefault": { "type": "boolean" },
+          "behavesAs": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._\\-]+$",
+            "maxLength": 128,
+            "description": "A Claude model ID such as claude-sonnet-5, for gateway aliases the app cannot identify. Region prefixes, dates and upper case are tolerated by the app; a bare family name without 'claude-' is ignored."
+          },
+          "maxEffort": {
+            "enum": ["low", "medium", "high", "xhigh", "max"]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

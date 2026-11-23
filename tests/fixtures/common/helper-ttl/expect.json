@@ -1,0 +1,10 @@
+{ "ok": true, "baseUrl": "https://gw.example.com/api/anthropic", "baseUrlHost": "gw.example.com",
+  "authScheme": "bearer", "tokenSource": "settings", "tokenLength": 20,
+  "credentialKind": "helper-script", "deploymentMode": "3p", "helperTtlSec": 120,
+  "models": [
+    { "name": "gw-default" },
+    { "name": "gw-opus",   "anthropicFamilyTier": "opus",   "isFamilyDefault": true },
+    { "name": "gw-sonnet", "anthropicFamilyTier": "sonnet", "isFamilyDefault": true },
+    { "name": "gw-haiku",  "anthropicFamilyTier": "haiku",  "isFamilyDefault": true }
+  ],
+  "warnings": [], "errors": [] }
