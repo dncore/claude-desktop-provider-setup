@@ -322,6 +322,9 @@ function Build-Models {
         $idx = Add-ModelIfAbsent $val
         $script:Core.Models[$idx].anthropicFamilyTier = $t.name
         $script:Core.Models[$idx].isFamilyDefault     = 'true'
+        # Which model each tier named, before de-duplication (SPEC 13.5).
+        if (-not $script:MagpieTierModels) { $script:MagpieTierModels = @{} }
+        $script:MagpieTierModels[$t.name] = $script:Core.Models[$idx].name
     }
 
     for ($i = 0; $i -lt $script:Core.MapIds.Count; $i++) {
@@ -349,7 +352,8 @@ Set it in ANTHROPIC_MODEL or ANTHROPIC_DEFAULT_*_MODEL, or pass
         return
     }
 
-    Apply-AnthropicFilter
+    # The magpie bridge exports to a client with no such filter (SPEC 13.4).
+    if (-not $script:MagpieNoFilter) { Apply-AnthropicFilter }
     if ($script:Core.Models.Count -eq 0) { return }
 
     $hasTier = $false

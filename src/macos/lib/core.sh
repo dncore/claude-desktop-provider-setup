@@ -270,6 +270,9 @@ core_model_ensure() {
 # would suppress model discovery and leave the picker empty.
 core_apply_anthropic_filter() {
   local i=0 n kept=0 lower
+  # The magpie bridge exports the list to a client with no such filter
+  # (SPEC 13.4), so its model ids must survive this step.
+  [ "${CDS_NO_ANTHROPIC_FILTER:-0}" = "1" ] && return 0
   n="${#CORE_MODEL_IDS[@]}"
   [ "$n" -gt 0 ] || return 0
 
@@ -349,6 +352,9 @@ core_load_mapping() {
 core_build_models() {
   local tier tier_var val i n id
   CORE_MODEL_IDS=()
+  # Which model each tier variable named, before de-duplication (SPEC 13.5):
+  # several tiers may share one model, and the magpie bridge binds each.
+  CORE_TIER_OPUS=""; CORE_TIER_SONNET=""; CORE_TIER_HAIKU=""; CORE_TIER_FABLE=
 
   core_pick env.ANTHROPIC_MODEL ANTHROPIC_MODEL
   CORE_DEFAULT_MODEL="$CORE_PICKED"
@@ -374,6 +380,12 @@ core_build_models() {
     core_model_ensure "$val"
     CORE_MODEL_TIER[$CORE_IDX]="$tier"
     CORE_MODEL_FAMDEFAULT[$CORE_IDX]="true"
+    case "$tier" in
+      opus)   CORE_TIER_OPUS="${CORE_MODEL_IDS[$CORE_IDX]}" ;;
+      sonnet) CORE_TIER_SONNET="${CORE_MODEL_IDS[$CORE_IDX]}" ;;
+      haiku)  CORE_TIER_HAIKU="${CORE_MODEL_IDS[$CORE_IDX]}" ;;
+      fable)  CORE_TIER_FABLE="${CORE_MODEL_IDS[$CORE_IDX]}" ;;
+    esac
   done
 
   n="${#CORE_MAP_IDS[@]}"
