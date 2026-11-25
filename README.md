@@ -1,5 +1,7 @@
 # claude-desktop-provider-setup
 
+**English** · [简体中文](README.zh-CN.md)
+
 Point Claude Desktop at the same third-party gateway your Claude Code CLI
 already uses — in one command, without retyping your base URL, token or model
 IDs.
@@ -23,8 +25,6 @@ Claude Desktop is configured.
   config id:  7b4b4385-dabb-4fbe-af5d-6786f91d1e12
 ```
 
-[简体中文](README.zh-CN.md)
-
 ---
 
 ## 1. What this is
@@ -43,7 +43,91 @@ helper, maps your models, and restarts nothing without telling you.
 It is **not** a replacement for Claude Desktop, a proxy, or a gateway. It moves
 one configuration from one place to another and can take it back out again.
 
-## 2. Supported platforms
+## 2. Using it with magpie
+
+[magpie](https://github.com/yetone/magpie) (MIT, open source) puts every coding
+agent behind one local gateway and writes each agent's configuration for you.
+Paired with this tool you never re-type your gateway URL, token or model ids:
+this tool reads the Claude Code configuration you already have and hands it to
+magpie in the form magpie imports.
+
+Pick one path:
+
+| You want | Do this |
+|---|---|
+| Claude Desktop configured directly, no extra software | `install`, see [§5](#5-installing-and-using) |
+| magpie to own the configuration and route every agent | the five steps below |
+
+### Step 1 — install magpie
+
+Download it from [github.com/yetone/magpie](https://github.com/yetone/magpie) or
+from its [releases](https://github.com/yetone/magpie-releases/releases) — macOS,
+Windows and Linux; the `magpie-cli-*` build is enough on a machine with no
+desktop session. Then check it answers:
+
+```sh
+magpie --version
+```
+
+### Step 2 — see what this tool would export
+
+```sh
+./install.command magpie          # macOS
+.\install.bat magpie              # Windows
+```
+
+Nothing is written. It prints the provider name, the Anthropic root, the model
+ids and a link like this one:
+
+```
+magpie://import?name=wonlap&anthropic=https%3A%2F%2F…&models=…
+```
+
+### Step 3 — hand the link to magpie
+
+```sh
+./install.command magpie --apply
+```
+
+magpie asks for the API key once. Paste the token from your
+`~/.claude/settings.json` — the same one Claude Code uses.
+
+The link deliberately carries no key, so it is safe to print, paste or show to
+someone. The trade-off: this step needs a terminal. With no terminal the tool
+prints the link and stops rather than applying half of it.
+
+### Step 4 — bind the model tiers (optional, and not free)
+
+```sh
+./install.command magpie --apply --set-tiers
+```
+
+This binds sonnet / opus / haiku / fable to the models your Claude Code
+configuration names. It also **rewrites `~/.claude/settings.json` to point at
+magpie's gateway**, so from then on Claude Code needs magpie running:
+
+```sh
+magpie daemon install
+```
+
+Skip this step and Claude Code keeps talking to your gateway directly.
+
+### Step 5 — restart Claude Desktop
+
+magpie writes the third-party profile and Claude Desktop reads it at launch. The
+models it offers come from the gateway's catalogue.
+
+### When something looks wrong
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `magpie is not installed` | not on `PATH` | install it, then re-run step 2 |
+| no prompt appears during `--apply` | no terminal | run it from a terminal window |
+| Claude Code stops working after step 4 | magpie is not running | `magpie daemon install` |
+| the model list is empty | the gateway publishes no `/v1/models` | add the provider in magpie by hand |
+| you want out | — | `magpie claude default` puts Claude Code back; `uninstall` removes this tool |
+
+## 3. Supported platforms
 
 | Platform | Versions | Status |
 |---|---|---|
@@ -53,7 +137,7 @@ one configuration from one place to another and can take it back out again.
 Linux is not supported by this tool. Claude Desktop's Linux build exists, but it
 was not tested here and the installer does not pretend otherwise.
 
-## 3. Requirements
+## 4. Requirements
 
 - Claude Desktop installed **and launched at least once** (it creates the
   configuration directory on first run). If it is missing the tool tells you
@@ -64,7 +148,7 @@ was not tested here and the installer does not pretend otherwise.
 See [macOS installation](docs/macos-installation.md) and
 [Windows installation](docs/windows-installation.md).
 
-## 4. Installing and using
+## 5. Installing and using
 
 ```sh
 git clone https://github.com/dncore/claude-desktop-provider-setup.git
@@ -109,7 +193,7 @@ token.
 | `verify` | check the installed configuration is intact and usable | no |
 | `diagnose` | print a redacted report, safe to paste into an issue | no |
 | `backup` / `restore` / `list-backups` | snapshot and revert the configuration library | yes |
-| `magpie` | export the provider for magpie, see [§8](#8-handing-your-provider-to-magpie) | only with `--apply` |
+| `magpie` | export the provider for magpie, see [§2](#2-using-it-with-magpie) | only with `--apply` |
 | `uninstall` | remove only what this tool created | yes |
 
 ### 4.3 Everyday cases
@@ -151,7 +235,7 @@ does not exist there.
 
 Full option list: `./install.command --help`.
 
-## 5. How it works
+## 6. How it works
 
 ```
 ~/.claude/settings.json
@@ -191,7 +275,7 @@ More: [architecture](docs/architecture.md) ·
 [research findings](docs/research-findings.md) ·
 [security](docs/security.md).
 
-## 6. Configuration example
+## 7. Configuration example
 
 Given this `~/.claude/settings.json`:
 
@@ -232,7 +316,7 @@ alias resolve to your gateway's model. On Windows the equivalent key is
 
 No API key appears anywhere in that file.
 
-## 7. Model mapping
+## 8. Model mapping
 
 Model IDs are taken verbatim from `ANTHROPIC_MODEL` and the four
 `ANTHROPIC_DEFAULT_*_MODEL` variables. Nothing is invented, normalised or
@@ -269,32 +353,6 @@ It cannot add a model ID unless you pass `--allow-unlisted-models`, so you
 cannot accidentally configure a model your account cannot serve.
 
 `config/model-mapping.json` is git-ignored; only the example is committed.
-
-## 8. Handing your provider to magpie
-
-[magpie](https://usemagpie.ai) is a menu-bar app that puts every agent behind one
-local gateway. If you would rather let magpie own the Claude Desktop
-configuration, this tool can export the provider Claude Code already uses in the
-form magpie imports:
-
-```sh
-./install.command magpie                      # print the import link, change nothing
-./install.command magpie --apply              # hand the link to magpie
-./install.command magpie --apply --set-tiers  # also bind sonnet/opus/haiku/fable
-```
-
-Three things to know:
-
-- **The link never carries your token.** magpie asks for it once in its own
-  prompt, so the key stays out of your shell history, your process list and its
-  logs. That means `--apply` needs a terminal: without one it prints the link and
-  exits rather than failing halfway.
-- **Tiers bind separately, and that step is not free.** `--set-tiers` rewrites
-  `~/.claude/settings.json` to point at magpie's gateway, so afterwards Claude
-  Code needs magpie running — `magpie daemon install` keeps it up.
-- **magpie is not installed for you.** The command reports whether one is on the
-  machine, and where to get one if not. Installing third-party software stays
-  your decision.
 
 ## 9. Uninstalling and restoring
 

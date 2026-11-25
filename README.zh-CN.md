@@ -1,5 +1,7 @@
 # claude-desktop-provider-setup
 
+[English](README.md) · **简体中文**
+
 让 Claude Desktop 使用与 Claude Code CLI 相同的第三方 AI Gateway —— 一条命令完成，
 不需要重新填写 Base URL、Token 或模型 ID。
 
@@ -18,8 +20,6 @@ Claude Desktop is configured.
   config id:  7b4b4385-dabb-4fbe-af5d-6786f91d1e12
 ```
 
-[English](README.md)
-
 ---
 
 ## 一、项目介绍
@@ -37,7 +37,85 @@ Anthropic 在
 它不是 Claude Desktop 的替代品，也不是代理或 Gateway。它只做一件事：
 把一份配置从一个地方搬到另一个地方，并且能完整撤回。
 
-## 二、支持平台
+## 二、配合 magpie 使用
+
+[magpie](https://github.com/yetone/magpie)（MIT，开源）把所有编码 agent 收在一个本地网关
+后面，并替你改写每个 agent 的配置。和本工具配合，你不需要重新填写网关地址、token 或模型 id：
+本工具读取你现有的 Claude Code 配置，转换成交给 magpie 就能直接导入的形式。
+
+两条路选一条：
+
+| 你想要 | 怎么做 |
+|---|---|
+| 不装额外软件，直接配好 Claude Desktop | 运行 `install`，见第五节 |
+| 让 magpie 托管配置并路由所有 agent | 下面五步 |
+
+### 第一步 — 安装 magpie
+
+从 [github.com/yetone/magpie](https://github.com/yetone/magpie) 或其
+[Release 页面](https://github.com/yetone/magpie-releases/releases) 下载，支持 macOS、Windows、
+Linux；没有桌面会话的机器装 `magpie-cli-*` 那个构建就够。装完确认它能跑：
+
+```sh
+magpie --version
+```
+
+### 第二步 — 看看本工具会导出什么
+
+```sh
+./install.command magpie          # macOS
+.\install.bat magpie              # Windows
+```
+
+不写入任何东西。它会打印 provider 名、Anthropic 根地址、模型 id，以及这样一条链接：
+
+```
+magpie://import?name=wonlap&anthropic=https%3A%2F%2F…&models=…
+```
+
+### 第三步 — 把链接交给 magpie
+
+```sh
+./install.command magpie --apply
+```
+
+magpie 会问一次 API key。粘贴你 `~/.claude/settings.json` 里的那个 token——就是 Claude Code
+正在用的那一个。
+
+链接里故意不带 key，所以它可以被打印、粘贴、发给别人看。代价是这一步需要一个终端：没有终端时
+工具会打印链接然后停下，而不是做到一半。
+
+### 第四步 — 绑定模型档位（可选，但有代价）
+
+```sh
+./install.command magpie --apply --set-tiers
+```
+
+这一步把 sonnet / opus / haiku / fable 绑到你 Claude Code 配置里点名的模型上。它同时会
+**把 `~/.claude/settings.json` 改成指向 magpie 的网关**，所以从那以后 Claude Code 需要 magpie
+一直在跑：
+
+```sh
+magpie daemon install
+```
+
+跳过这一步，Claude Code 就继续直连你的网关。
+
+### 第五步 — 重启 Claude Desktop
+
+magpie 写好第三方配置，Claude Desktop 在启动时读取。模型列表来自网关的目录。
+
+### 出问题时
+
+| 现象 | 原因 | 处理 |
+|---|---|---|
+| 提示 `magpie is not installed` | 不在 `PATH` 上 | 先安装，再重跑第二步 |
+| `--apply` 没有出现提示 | 没有终端 | 在终端窗口里运行 |
+| 第四步之后 Claude Code 不能用了 | magpie 没在跑 | `magpie daemon install` |
+| 模型列表是空的 | 网关没有 `/v1/models` | 在 magpie 里手工添加 provider |
+| 想反悔 | — | `magpie claude default` 把 Claude Code 还原；`uninstall` 移除本工具 |
+
+## 三、支持平台
 
 | 平台 | 版本 | 状态 |
 |---|---|---|
@@ -46,7 +124,7 @@ Anthropic 在
 
 不支持 Linux。Claude Desktop 有 Linux 版本，但本项目没有测试过，也不假装支持。
 
-## 三、系统要求
+## 四、系统要求
 
 - 已安装 Claude Desktop，并且**至少启动过一次**（配置目录在首次运行时创建）。
   未安装时工具会提示官方下载地址，不会下载任何安装包。
@@ -56,7 +134,7 @@ Anthropic 在
 详见 [macOS 安装](docs/macos-installation.md) 与
 [Windows 安装](docs/windows-installation.md)。
 
-## 四、安装与使用
+## 五、安装与使用
 
 ```sh
 git clone https://github.com/dncore/claude-desktop-provider-setup.git
@@ -100,7 +178,7 @@ Claude Desktop is configured.
 | `verify` | 检查已安装配置是否完整可用 | 否 |
 | `diagnose` | 输出脱敏诊断报告，可安全贴到 issue | 否 |
 | `backup` / `restore` / `list-backups` | 备份与还原配置库 | 是 |
-| `magpie` | 把 provider 导出给 magpie，见 [§八](#八交给-magpie) | 仅 `--apply` |
+| `magpie` | 把 provider 导出给 magpie，见第二节 | 仅 `--apply` |
 | `uninstall` | 只删除本工具创建的内容 | 是 |
 
 ### 4.3 日常情况
@@ -133,7 +211,7 @@ Claude Desktop is configured.
 
 完整参数：`./install.command --help`。
 
-## 五、工作原理
+## 六、工作原理
 
 ```
 ~/.claude/settings.json
@@ -167,7 +245,7 @@ Claude Code 会同时发送两个请求头，而 Claude Desktop 只能发一个�
 更多：[架构](docs/architecture.md) · [调研结论](docs/research-findings.md) ·
 [安全说明](docs/security.md)。
 
-## 六、配置示例
+## 七、配置示例
 
 假设 `~/.claude/settings.json` 是：
 
@@ -208,7 +286,7 @@ Claude Code 会同时发送两个请求头，而 Claude Desktop 只能发一个�
 
 这份文件里没有任何 API Key。
 
-## 七、模型映射
+## 八、模型映射
 
 模型 ID 原样取自 `ANTHROPIC_MODEL` 与四个 `ANTHROPIC_DEFAULT_*_MODEL` 变量，
 不臆造、不规范化、不改大小写。
@@ -241,26 +319,6 @@ cp config/model-mapping.example.json config/model-mapping.json
 避免误配你账号实际无法使用的模型。
 
 `config/model-mapping.json` 已被 git 忽略，只有示例文件会被提交。
-
-## 八、交给 magpie
-
-[magpie](https://usemagpie.ai) 是把所有 agent 收在一个本地网关后面的菜单栏应用。如果你更愿意让
-magpie 托管 Claude Desktop 的配置，本工具可以把 Claude Code 已经在用的 provider 导出成 magpie
-能导入的形式：
-
-```sh
-./install.command magpie                      # 打印导入链接，什么都不改
-./install.command magpie --apply              # 把链接交给 magpie
-./install.command magpie --apply --set-tiers  # 顺带绑定 sonnet/opus/haiku/fable
-```
-
-三点须知：
-
-- **链接里不带你的 token。** magpie 会在自己的提示里问一次，所以密钥不会进 shell 历史、进程列表
-  或日志。也正因为如此，`--apply` 需要终端：没有终端时它打印链接后退出，而不是做到一半失败。
-- **档位要单独绑，而且这一步有代价。** `--set-tiers` 会把 `~/.claude/settings.json` 改成指向
-  magpie 的网关，此后 Claude Code 需要 magpie 常驻——用 `magpie daemon install` 让它跑起来。
-- **不会替你安装 magpie。** 命令会告诉你本机有没有，没有的话去哪里拿。装第三方软件这件事由你决定。
 
 ## 九、卸载与恢复
 
