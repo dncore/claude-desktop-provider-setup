@@ -88,7 +88,7 @@ magpie_models_csv() {
 # have its own").
 magpie_select_command() {
   [ -n "${CORE_MODEL_IDS[0]:-}" ] || return 0
-  printf '%s claude %s/%s\n' "${MAGPIE_BIN:-magpie}" "$MAGPIE_NAME" "${CORE_MODEL_IDS[0]}"
+  printf 'magpie claude %s/%s\n' "$MAGPIE_NAME" "${CORE_MODEL_IDS[0]}"
 }
 
 magpie_tier_commands() {
@@ -101,7 +101,7 @@ magpie_tier_commands() {
       fable)  id="$CORE_TIER_FABLE" ;;
     esac
     [ -n "$id" ] || continue
-    printf '%s claude %s %s/%s\n' "${MAGPIE_BIN:-magpie}" "$tier" "$MAGPIE_NAME" "$id"
+    printf 'magpie claude %s %s/%s\n' "$tier" "$MAGPIE_NAME" "$id"
   done
 }
 

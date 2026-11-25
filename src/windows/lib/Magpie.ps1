@@ -78,19 +78,17 @@ function Get-MagpieSelectCommand {
     if ($script:Core.Models.Count -eq 0) { return '' }
     $default = $script:Core.Models[0].name
     if (-not $default) { return '' }
-    $exe = if ($script:MagpiePath) { $script:MagpiePath } else { 'magpie' }
-    return "$exe claude $($script:MagpieName)/$default"
+    return "magpie claude $($script:MagpieName)/$default"
 }
 
 # One `magpie claude <tier> <name>/<id>` per tier the CLI config bound.
 function Get-MagpieTierCommands {
     $cmds = New-Object System.Collections.ArrayList
-    $exe = if ($script:MagpiePath) { $script:MagpiePath } else { 'magpie' }
     foreach ($tier in @('sonnet', 'opus', 'haiku', 'fable')) {
         if (-not $script:MagpieTierModels) { continue }
         $id = $script:MagpieTierModels[$tier]
         if (-not $id) { continue }
-        [void]$cmds.Add("$exe claude $tier $($script:MagpieName)/$id")
+        [void]$cmds.Add("magpie claude $tier $($script:MagpieName)/$id")
     }
     return $cmds
 }
@@ -163,7 +161,7 @@ function Write-MagpieInstallHint {
 
 # The command line cannot take the key: `magpie import` reads it from the link
 # and has no prompt, so a keyless link always fails there. The app does ask, so
-# the link goes to the app and the key goes into its own field — never into
+# the link goes to the app and the key goes into its own field, never into
 # argv, a URL we write, or shell history (SPEC 13.6).
 function Open-MagpieImportLink {
     if (-not $script:MagpiePath) {

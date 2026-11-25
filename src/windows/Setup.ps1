@@ -265,7 +265,7 @@ function Setup-Verify {
     }
 
     if (Test-Path 'HKLM:\SOFTWARE\Policies\Claude') {
-        Write-Note 'machine policy: PRESENT — it overrides this configuration'
+        Write-Note 'machine policy: PRESENT - it overrides this configuration'
         $failures++
     } else {
         Write-Note 'machine policy: absent'
