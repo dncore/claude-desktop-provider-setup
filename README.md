@@ -64,7 +64,7 @@ was not tested here and the installer does not pretend otherwise.
 See [macOS installation](docs/macos-installation.md) and
 [Windows installation](docs/windows-installation.md).
 
-## 4. Installing
+## 4. Installing and using
 
 ```sh
 git clone https://github.com/dncore/claude-desktop-provider-setup.git
@@ -81,17 +81,73 @@ Look before you leap — this writes nothing:
 
 Then restart Claude Desktop. That is all.
 
-### Commands
+### 4.1 What a run prints
 
-| Command | Purpose |
+```
+  backup: …/backups/20261123T013710Z      a copy of the library before it changed
+  helper: …/helper/credential-helper.sh   the script Desktop calls for a token
+
+Claude Desktop is configured.
+  provider:   gateway                     the only provider this tool writes
+  base URL:   https://gw.example.com/api/anthropic
+  auth:       bearer                      what Claude Code sends today
+  credential: helper script (token read from settings.json, 21 bytes)
+  models:     4 configured                first entry is Desktop's default
+  config id:  7b4b4385-…                  the entry this tool owns
+```
+
+Nothing on those lines is a secret. The byte count is the token's length, not the
+token.
+
+### 4.2 Commands
+
+| Command | Purpose | Writes anything? |
+|---|---|---|
+| `plan` | print the resolved plan as JSON | no |
+| `install` | configure Claude Desktop (the default) | yes |
+| `update` | re-apply after you change your Claude Code settings | yes |
+| `verify` | check the installed configuration is intact and usable | no |
+| `diagnose` | print a redacted report, safe to paste into an issue | no |
+| `backup` / `restore` / `list-backups` | snapshot and revert the configuration library | yes |
+| `magpie` | export the provider for magpie, see [§8](#8-handing-your-provider-to-magpie) | only with `--apply` |
+| `uninstall` | remove only what this tool created | yes |
+
+### 4.3 Everyday cases
+
+**You rotated the token.** Nothing to do. The configuration holds a helper path,
+not a secret, so Desktop reads the new value on its next request.
+
+**You changed the model list.** Run `./install.command update`. It re-reads
+`settings.json`, rewrites the same entry, and takes a backup first.
+
+**Something looks wrong.** `./install.command verify` checks the files and the
+helper protocol; `./install.command diagnose` prints the redacted report that
+makes an issue actionable.
+
+**You want it gone.** `./uninstall.command`. Your Claude Code file was never
+touched, so nothing needs putting back there.
+
+### 4.4 Exit codes
+
+| Code | Meaning |
 |---|---|
-| `plan` | print the resolved plan as JSON, write nothing |
-| `install` | configure Claude Desktop (default) |
-| `update` | re-apply after changing your Claude Code settings |
-| `verify` | check the installed configuration is intact and usable |
-| `diagnose` | print a redacted report, safe for an issue |
-| `backup` / `restore` / `list-backups` | snapshot and revert the configuration library |
-| `uninstall` | remove only what this tool created |
+| 0 | success |
+| 2 | bad usage |
+| 3 | the Claude Code configuration cannot be used (no URL, no model, or a mapping that names a model the file does not have) |
+| 4 | two credentials disagree; pass `--auth-scheme bearer\|x-api-key` |
+| 5 | an environment problem: Claude Desktop not installed, no backups to restore |
+| 6 | a write, or the verification after a write, failed |
+| 7 | the credential helper did not answer as specified |
+
+A failure prints one `error: <kind>: <detail>` line on stderr. Nothing is left
+half-written; `restore` puts the previous entry back.
+
+### 4.5 On Windows
+
+Paths live under `%LOCALAPPDATA%`, and the current MSIX build of Claude Desktop
+keeps its data in a virtualized directory that this tool resolves at run time.
+Run `.\install.bat` from the repository folder; the macOS `./install.command`
+does not exist there.
 
 Full option list: `./install.command --help`.
 
@@ -214,7 +270,33 @@ cannot accidentally configure a model your account cannot serve.
 
 `config/model-mapping.json` is git-ignored; only the example is committed.
 
-## 8. Uninstalling and restoring
+## 8. Handing your provider to magpie
+
+[magpie](https://usemagpie.ai) is a menu-bar app that puts every agent behind one
+local gateway. If you would rather let magpie own the Claude Desktop
+configuration, this tool can export the provider Claude Code already uses in the
+form magpie imports:
+
+```sh
+./install.command magpie                      # print the import link, change nothing
+./install.command magpie --apply              # hand the link to magpie
+./install.command magpie --apply --set-tiers  # also bind sonnet/opus/haiku/fable
+```
+
+Three things to know:
+
+- **The link never carries your token.** magpie asks for it once in its own
+  prompt, so the key stays out of your shell history, your process list and its
+  logs. That means `--apply` needs a terminal: without one it prints the link and
+  exits rather than failing halfway.
+- **Tiers bind separately, and that step is not free.** `--set-tiers` rewrites
+  `~/.claude/settings.json` to point at magpie's gateway, so afterwards Claude
+  Code needs magpie running — `magpie daemon install` keeps it up.
+- **magpie is not installed for you.** The command reports whether one is on the
+  machine, and where to get one if not. Installing third-party software stays
+  your decision.
+
+## 9. Uninstalling and restoring
 
 ```sh
 ./uninstall.command        # macOS
@@ -237,7 +319,7 @@ Restoring a snapshot:
 Restores are verified against a recorded SHA-256 per file before anything is
 written.
 
-## 9. Security
+## 10. Security
 
 - **No secret is written by this tool.** Not to the configuration, not to
   `state.json`, not to logs. Diagnostics report a byte count, never the value.
@@ -255,7 +337,7 @@ written.
   [docs/security.md](docs/security.md).
 - **Nothing calls home.** There is no network code in this project.
 
-## 10. FAQ
+## 11. FAQ
 
 **Do I need to re-enter my token?** No, if it is in the `env` block of
 `~/.claude/settings.json`. If it is only in your shell environment, the tool
@@ -286,7 +368,7 @@ is not fully specified.
 macOS: `~/Library/Application Support/{Claude-3p/configLibrary,claude-desktop-provider-setup}`.
 Windows: `%LOCALAPPDATA%\{Claude-3p\configLibrary,claude-desktop-provider-setup}`.
 
-## 11. Known limitations
+## 12. Known limitations
 
 - **Not verified against a running Claude Desktop in automation.** The suites
   prove file handling, the plan and the helper protocol. That the app accepts
@@ -309,9 +391,12 @@ Windows: `%LOCALAPPDATA%\{Claude-3p\configLibrary,claude-desktop-provider-setup}
   passed through unchanged; no `/v1` suffix is added.
 - **Model discovery with tier aliases is under-specified.** See above.
 - **Only the `gateway` provider.** Bedrock/Vertex/Foundry are out of scope.
+- **The magpie bridge needs a terminal to import.** The import link carries no
+  token on purpose, so magpie asks for it interactively; a run with no terminal
+  prints the link and stops with exit 5 rather than half-applying it.
 - **No Linux.** The code is portable in principle; it was not tested.
 
-## 12. References
+## 13. References
 
 - [Claude Desktop third-party: configuration reference](https://claude.com/docs/third-party/claude-desktop/configuration.md)
 - [Configuration implementation and value types](https://claude.com/docs/third-party/claude-desktop/configuration-format.md)

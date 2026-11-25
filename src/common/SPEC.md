@@ -436,3 +436,68 @@ in the serialised JSON does not matter for the conformance diff, but the
 Warnings are compared by `kind` and position only; `detail` is diagnostic prose
 in the user's locale and is not part of the contract. Everything else — every
 field of every model object, in order — is compared exactly.
+
+## 13. The magpie bridge (`magpie`)
+
+`magpie` exports the provider this machine's Claude Code already uses into
+magpie's import format, so a user who has no coding background can hand their
+working configuration to magpie in one command. It reads, it never writes the
+Claude Code configuration, and it never copies the token anywhere.
+
+### 13.1 Inputs
+
+Everything comes from the same resolution as §1–§4: the base URL, the token and
+its scheme, and the model ids named by `ANTHROPIC_MODEL` and the four
+`ANTHROPIC_DEFAULT_*_MODEL` variables.
+
+### 13.2 The Anthropic root
+
+magpie wants the Anthropic Messages **root** and appends `/v1/messages` itself.
+Normalise by removing, in order: trailing slashes, a trailing `/v1/messages`,
+then a trailing `/v1`. An `http` result is refused unless it is loopback:
+magpie accepts plain http only to this machine or the local network.
+
+### 13.3 The import link
+
+```
+magpie://import?name=<name>&anthropic=<root>&models=<id,id,…>
+```
+
+- `name` defaults to the second-to-last label of the base URL host
+  (`console.eu.example.com` → `example`), overridable with
+  `--provider-name`, ASCII `[A-Za-z0-9._-]` only.
+- `models` is the union of every id in §13.5, `[1m]` stripped, order preserved,
+  duplicates removed.
+- **`key` is never included.** magpie prompts for it (§13.6). Writing the token
+  into a URL or into argv would put it in shell history, process listings,
+  clipboard managers and logs, which §11 forbids.
+
+### 13.4 No Anthropic-name filter
+
+§5.3b filters model entries for Claude Desktop. magpie has no such filter, so
+the bridge bypasses it; applying it would empty the very list being exported.
+
+### 13.5 Tiers keep their provenance
+
+De-duplication in §5 collapses several tiers that name one model into a single
+entry, so the per-model tier field cannot answer "which tiers were bound". The
+core records, per tier variable, the id it named, before de-duplication. The
+bridge binds each of those:
+
+```
+magpie claude <name>/<default>          # first: magpie refuses a tier until the agent has a model
+magpie claude <tier> <name>/<id>        # then sonnet, opus, haiku, fable, in that order
+```
+
+### 13.6 What the bridge will not do
+
+- **It will not run `magpie import` without a terminal.** The link carries no
+  key, so magpie asks for it interactively; `-y` means "do not ask", not "no key
+  needed", and fails. Without a terminal the bridge prints the link and exits 5.
+- **It will not apply tier bindings unless `--set-tiers` is given.** That step
+  rewrites `~/.claude/settings.json` to point at magpie's gateway, after which
+  Claude Code needs magpie running. The bridge says so when it happens.
+- **It will not install magpie.** It reports whether one was found and how to
+  get one; installing third-party software is the user's decision.
+
+Exit codes are those of §10.

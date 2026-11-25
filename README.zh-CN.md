@@ -56,7 +56,7 @@ Anthropic 在
 详见 [macOS 安装](docs/macos-installation.md) 与
 [Windows 安装](docs/windows-installation.md)。
 
-## 四、安装方法
+## 四、安装与使用
 
 ```sh
 git clone https://github.com/dncore/claude-desktop-provider-setup.git
@@ -73,17 +73,63 @@ cd claude-desktop-provider-setup
 
 然后重启 Claude Desktop 即可。
 
-### 命令
+### 4.1 一次运行会打印什么
 
-| 命令 | 作用 |
+```
+  backup: …/backups/20261123T013710Z      改动前的配置库副本
+  helper: …/helper/credential-helper.sh   Desktop 取 token 时调用的脚本
+
+Claude Desktop is configured.
+  provider:   gateway                     本工具唯一写入的 provider
+  base URL:   https://gw.example.com/api/anthropic
+  auth:       bearer                      与 Claude Code 当前发送的一致
+  credential: helper script (token read from settings.json, 21 bytes)
+  models:     4 configured                第一条是 Desktop 的默认模型
+  config id:  7b4b4385-…                  本工具拥有的那一条
+```
+
+以上没有一处是密钥；`21 bytes` 是 token 的字节数，不是 token 本身。
+
+### 4.2 命令
+
+| 命令 | 作用 | 是否写入 |
+|---|---|---|
+| `plan` | 以 JSON 输出解析结果 | 否 |
+| `install` | 配置 Claude Desktop（默认） | 是 |
+| `update` | 修改 Claude Code 配置后重新应用 | 是 |
+| `verify` | 检查已安装配置是否完整可用 | 否 |
+| `diagnose` | 输出脱敏诊断报告，可安全贴到 issue | 否 |
+| `backup` / `restore` / `list-backups` | 备份与还原配置库 | 是 |
+| `magpie` | 把 provider 导出给 magpie，见 [§八](#八交给-magpie) | 仅 `--apply` |
+| `uninstall` | 只删除本工具创建的内容 | 是 |
+
+### 4.3 日常情况
+
+**换了 token。** 不用做任何事。配置里存的是助手脚本路径而不是密钥，Desktop 下次请求会读到新值。
+
+**改了模型列表。** 运行 `./install.command update`：重读 `settings.json`，覆盖同一条目，改动前先备份。
+
+**感觉哪里不对。** `./install.command verify` 检查文件与助手协议；`diagnose` 输出可贴进 issue 的脱敏报告。
+
+**想彻底移除。** `./uninstall.command`。Claude Code 的文件从未被修改，那边不需要还原。
+
+### 4.4 退出码
+
+| 码 | 含义 |
 |---|---|
-| `plan` | 以 JSON 输出解析结果，不写入 |
-| `install` | 配置 Claude Desktop（默认） |
-| `update` | 修改 Claude Code 配置后重新应用 |
-| `verify` | 检查已安装配置是否完整可用 |
-| `diagnose` | 输出脱敏诊断报告，可安全贴到 issue |
-| `backup` / `restore` / `list-backups` | 备份与还原配置库 |
-| `uninstall` | 只删除本工具创建的内容 |
+| 0 | 成功 |
+| 2 | 参数错误 |
+| 3 | Claude Code 配置不可用（没有 URL、没有模型，或映射点名了文件里没有的模型） |
+| 4 | 两个凭据不一致；用 `--auth-scheme bearer\|x-api-key` 指定 |
+| 5 | 环境问题：没装 Claude Desktop、没有可还原的备份 |
+| 6 | 写入失败，或写入后的校验失败 |
+| 7 | 凭据助手没有按约定应答 |
+
+失败只打印一行 `error: <kind>: <detail>` 到 stderr，不会留下半成品；`restore` 能把上一条配置放回去。
+
+### 4.5 Windows 上
+
+路径在 `%LOCALAPPDATA%` 下。当前 MSIX 版 Claude Desktop 把数据放在虚拟化目录里，本工具运行时解析真实路径。在仓库目录里运行 `.\install.bat`，那里没有 macOS 的 `./install.command`。
 
 完整参数：`./install.command --help`。
 
@@ -196,7 +242,27 @@ cp config/model-mapping.example.json config/model-mapping.json
 
 `config/model-mapping.json` 已被 git 忽略，只有示例文件会被提交。
 
-## 八、卸载与恢复
+## 八、交给 magpie
+
+[magpie](https://usemagpie.ai) 是把所有 agent 收在一个本地网关后面的菜单栏应用。如果你更愿意让
+magpie 托管 Claude Desktop 的配置，本工具可以把 Claude Code 已经在用的 provider 导出成 magpie
+能导入的形式：
+
+```sh
+./install.command magpie                      # 打印导入链接，什么都不改
+./install.command magpie --apply              # 把链接交给 magpie
+./install.command magpie --apply --set-tiers  # 顺带绑定 sonnet/opus/haiku/fable
+```
+
+三点须知：
+
+- **链接里不带你的 token。** magpie 会在自己的提示里问一次，所以密钥不会进 shell 历史、进程列表
+  或日志。也正因为如此，`--apply` 需要终端：没有终端时它打印链接后退出，而不是做到一半失败。
+- **档位要单独绑，而且这一步有代价。** `--set-tiers` 会把 `~/.claude/settings.json` 改成指向
+  magpie 的网关，此后 Claude Code 需要 magpie 常驻——用 `magpie daemon install` 让它跑起来。
+- **不会替你安装 magpie。** 命令会告诉你本机有没有，没有的话去哪里拿。装第三方软件这件事由你决定。
+
+## 九、卸载与恢复
 
 ```sh
 ./uninstall.command        # macOS
@@ -217,7 +283,7 @@ cp config/model-mapping.example.json config/model-mapping.json
 
 恢复前会按备份清单里的 SHA-256 逐文件校验，校验不通过不写入。
 
-## 九、安全说明
+## 十、安全说明
 
 - **本工具不写入任何密钥。** 不写进配置、不写进 `state.json`、不写进日志。
   诊断报告只输出字节数。测试套件会在凭证出现在任何输出中时判定失败。
@@ -231,7 +297,7 @@ cp config/model-mapping.example.json config/model-mapping.json
   [docs/security.md](docs/security.md)。
 - **不联网。** 本项目没有任何网络代码。
 
-## 十、常见问题
+## 十一、常见问题
 
 **需要重新填写 Token 吗？** 只要它在 `~/.claude/settings.json` 的 `env` 块里，就不需要。
 如果它只存在于 shell 环境变量中，工具会停下并告诉你该往哪里补一行 ——
@@ -258,7 +324,7 @@ HTTP Gateway。其他供应商需要的凭证，本工具没有安全的方式�
 macOS：`~/Library/Application Support/{Claude-3p/configLibrary,claude-desktop-provider-setup}`；
 Windows：`%LOCALAPPDATA%\{Claude-3p\configLibrary,claude-desktop-provider-setup}`。
 
-## 十一、已知限制
+## 十二、已知限制
 
 - **未在自动化流程中验证真实运行的 Claude Desktop。** 测试证明了文件处理、
   解析计划与 Helper 协议；「应用确实接受这份配置」是根据官方 schema 与
@@ -277,7 +343,7 @@ Windows：`%LOCALAPPDATA%\{Claude-3p\configLibrary,claude-desktop-provider-setup
 - **只支持 `gateway` 供应商。**
 - **不支持 Linux。**
 
-## 十二、官方参考资料
+## 十三、官方参考资料
 
 - [第三方推理配置参考](https://claude.com/docs/third-party/claude-desktop/configuration.md)
 - [配置实现与值类型](https://claude.com/docs/third-party/claude-desktop/configuration-format.md)
