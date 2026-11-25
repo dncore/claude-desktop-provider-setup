@@ -161,50 +161,48 @@ function Write-MagpieInstallHint {
     Write-Note '  (there is no official one-line installer for Windows)'
 }
 
-function Invoke-MagpieApply {
+# The command line cannot take the key: `magpie import` reads it from the link
+# and has no prompt, so a keyless link always fails there. The app does ask, so
+# the link goes to the app and the key goes into its own field — never into
+# argv, a URL we write, or shell history (SPEC 13.6).
+function Open-MagpieImportLink {
     if (-not $script:MagpiePath) {
         Write-MagpieInstallHint
         Stop-WithError 5 'magpie-missing' 'magpie is not installed'
     }
-
-    # The link carries no key on purpose, so magpie asks for it on a terminal.
-    # Without one it fails with a message that reads like a bug (SPEC 13.6).
-    if ([Console]::IsInputRedirected) {
-        Write-Note 'magpie asks for the API key on a terminal, and this run has none.'
-        Write-Note 'Run this again in a terminal window, or import the link by hand:'
+    Write-Note 'opening the link in magpie; it will ask for the API key'
+    try {
+        Start-Process -FilePath $script:MagpieLink | Out-Null
+    } catch {
+        Write-Note 'could not open it; paste this into magpie by hand:'
         [Console]::Out.WriteLine($script:MagpieLink)
-        Stop-WithError 5 'magpie-no-tty' 'no terminal for the key prompt'
+        Stop-WithError 6 'magpie-open' 'the app did not accept the link'
     }
+    Write-Note 'paste the token from settings.json into magpie, then press Add'
+}
 
-    Write-Note "running: $($script:MagpiePath) import <link>"
-    Write-Note 'magpie will ask for the API key; it is not in the link.'
-    & $script:MagpiePath import $script:MagpieLink
-    if ($LASTEXITCODE -ne 0) { Stop-WithError 6 'magpie-import' 'magpie import failed' }
-    Write-Note "provider imported. Check it with: $($script:MagpiePath) providers"
-
-    $tiers = Get-MagpieTierCommands
-    if ($tiers.Count -eq 0) { return }
-
-    if ($script:MagpieSetTiers) {
-        $default = $script:Core.Models[0].name
-        if ($default) {
-            Write-Note "running: $($script:MagpiePath) claude $($script:MagpieName)/$default"
-            & $script:MagpiePath claude "$($script:MagpieName)/$default"
-            if ($LASTEXITCODE -ne 0) { Stop-WithError 6 'magpie-select' 'picking the main model failed' }
-        }
-        foreach ($tier in @('sonnet', 'opus', 'haiku', 'fable')) {
-            $id = $script:MagpieTierModels[$tier]
-            if (-not $id) { continue }
-            Write-Note "running: $($script:MagpiePath) claude $tier $($script:MagpieName)/$id"
-            & $script:MagpiePath claude $tier "$($script:MagpieName)/$id"
-            if ($LASTEXITCODE -ne 0) { Stop-WithError 6 'magpie-tier' "tier binding failed for $tier" }
-        }
-        Write-Note "tiers bound. Claude Code now goes through magpie's gateway, so magpie must stay running:"
-        Write-Note "  $($script:MagpiePath) daemon install   # or keep the magpie app open"
-    } else {
-        Write-Note 'tier bindings were not applied (they rewrite ~/.claude/settings.json). Re-run with --set-tiers:'
-        foreach ($c in $tiers) { Write-Note "  $c" }
+# The default pick, then each tier. No secret involved.
+function Invoke-MagpieBindTiers {
+    if (-not $script:MagpiePath) {
+        Write-MagpieInstallHint
+        Stop-WithError 5 'magpie-missing' 'magpie is not installed'
     }
+    $default = $script:Core.Models[0].name
+    if (-not $default) { Stop-WithError 3 'no-model-config' 'no model to bind' }
+
+    Write-Note "running: $($script:MagpiePath) claude $($script:MagpieName)/$default"
+    & $script:MagpiePath claude "$($script:MagpieName)/$default"
+    if ($LASTEXITCODE -ne 0) { Stop-WithError 6 'magpie-select' 'picking the main model failed' }
+
+    foreach ($tier in @('sonnet', 'opus', 'haiku', 'fable')) {
+        $id = $script:MagpieTierModels[$tier]
+        if (-not $id) { continue }
+        Write-Note "running: $($script:MagpiePath) claude $tier $($script:MagpieName)/$id"
+        & $script:MagpiePath claude $tier "$($script:MagpieName)/$id"
+        if ($LASTEXITCODE -ne 0) { Stop-WithError 6 'magpie-tier' "tier binding failed for $tier" }
+    }
+    Write-Note "tiers bound. Claude Code now goes through magpie's gateway, so magpie must stay running:"
+    Write-Note "  $($script:MagpiePath) daemon install   # or keep the magpie app open"
 }
 
 function Invoke-MagpieCommand {
@@ -230,9 +228,15 @@ function Invoke-MagpieCommand {
     else { Write-Note 'magpie          not found' }
 
     if ($script:MagpieApplyMode) {
-        Invoke-MagpieApply
+        Open-MagpieImportLink
     } else {
         [Console]::Out.WriteLine($script:MagpieLink)
-        Write-Note 'nothing was changed. Re-run with --apply to hand this link to magpie.'
+        Write-Note 'nothing was changed. --apply opens this link in magpie to add the provider.'
+    }
+    if ($script:MagpieSetTiers) {
+        Invoke-MagpieBindTiers
+    } elseif ($script:MagpieApplyMode) {
+        Write-Note 'tier bindings were not applied. Add --set-tiers to bind them:'
+        foreach ($c in (Get-MagpieTierCommands)) { Write-Note "  $c" }
     }
 }

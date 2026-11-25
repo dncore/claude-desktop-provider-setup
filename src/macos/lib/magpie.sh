@@ -210,64 +210,47 @@ magpie_install_hint() {
   cds_note "or download the signed build from https://usemagpie.ai"
 }
 
-# magpie_apply -> hand the link to magpie. Its own prompt asks for the key.
-magpie_apply() {
+# magpie_open -> hand the link to the magpie app.
+#
+# The command line cannot take the key: `magpie import` reads it from the link
+# and has no prompt, so a keyless link always fails there. The app does ask, so
+# the link goes to the app and the key goes into its own field — never into
+# argv, a URL we write, or shell history (SPEC 13.6).
+magpie_open() {
   [ -n "$MAGPIE_BIN" ] || { magpie_install_hint; cds_die 5 magpie-missing "magpie is not installed"; }
 
-  # The link carries no key on purpose, so magpie asks for it on a terminal.
-  # Without one it fails with a message that reads like a bug (SPEC 13.6).
-  if [ ! -t 0 ]; then
-    cds_note "magpie asks for the API key on a terminal, and this run has none."
-    cds_note "Run this again in a terminal window, or import the link by hand:"
+  cds_note "opening the link in magpie; it will ask for the API key"
+  if ! open "$MAGPIE_LINK" 2>/dev/null; then
+    cds_note "could not open it; paste this into magpie by hand:"
     printf '%s\n' "$MAGPIE_LINK"
-    cds_die 5 magpie-no-tty "no terminal for the key prompt"
+    cds_die 6 magpie-open "the app did not accept the link"
   fi
+  cds_note "paste the token from ~/.claude/settings.json, then press Add"
+}
 
-  cds_note "running: $MAGPIE_BIN import <link>"
-  cds_note "magpie will ask for the API key; it is not in the link."
-  if ! "$MAGPIE_BIN" import "$MAGPIE_LINK"; then
-    cds_die 6 magpie-import "magpie import failed"
-  fi
-  cds_note "provider imported. Check it with: $MAGPIE_BIN providers"
+# magpie_bind_tiers -> the default pick, then each tier. No secret involved.
+magpie_bind_tiers() {
+  [ -n "$MAGPIE_BIN" ] || { magpie_install_hint; cds_die 5 magpie-missing "magpie is not installed"; }
 
-  local tiers
-  tiers="$(magpie_tier_commands)"
-  if [ -z "$tiers" ]; then
-    return 0
-  fi
-  if [ "${CDS_MAGPIE_SET_TIERS:-0}" = "1" ]; then
-    local tier id select
-    select="$(magpie_select_command)"
-    if [ -n "$select" ]; then
-      cds_note "running: $select"
-      # shellcheck disable=SC2086
-      set -- $select
-      "$1" "$2" "$3" "$4" || cds_die 6 magpie-select "picking the main model failed"
-      set --
-    fi
-    for tier in sonnet opus haiku fable; do
-      case "$tier" in
-        sonnet) id="$CORE_TIER_SONNET" ;;
-        opus)   id="$CORE_TIER_OPUS" ;;
-        haiku)  id="$CORE_TIER_HAIKU" ;;
-        fable)  id="$CORE_TIER_FABLE" ;;
-      esac
-      [ -n "$id" ] || continue
-      cds_note "running: $MAGPIE_BIN claude $tier $MAGPIE_NAME/$id"
-      "$MAGPIE_BIN" claude "$tier" "$MAGPIE_NAME/$id" \
-        || cds_die 6 magpie-tier "tier binding failed for $tier"
-    done
-    cds_note "tiers bound. Claude Code now goes through magpie's gateway, so magpie must stay running:"
-    cds_note "  $MAGPIE_BIN daemon install   # or keep the magpie app open"
-  else
-    cds_note "tier bindings were not applied (they rewrite ~/.claude/settings.json). Re-run with --set-tiers:"
-    while IFS= read -r line; do
-      [ -n "$line" ] || continue
-      cds_note "  $line"
-    done <<EOF
-$tiers
-EOF
-  fi
+  local tier id
+  cds_note "running: $MAGPIE_BIN claude $MAGPIE_NAME/${CORE_MODEL_IDS[0]:-}"
+  "$MAGPIE_BIN" claude "$MAGPIE_NAME/${CORE_MODEL_IDS[0]}" \
+    || cds_die 6 magpie-select "picking the main model failed"
+
+  for tier in sonnet opus haiku fable; do
+    case "$tier" in
+      sonnet) id="$CORE_TIER_SONNET" ;;
+      opus)   id="$CORE_TIER_OPUS" ;;
+      haiku)  id="$CORE_TIER_HAIKU" ;;
+      fable)  id="$CORE_TIER_FABLE" ;;
+    esac
+    [ -n "$id" ] || continue
+    cds_note "running: $MAGPIE_BIN claude $tier $MAGPIE_NAME/$id"
+    "$MAGPIE_BIN" claude "$tier" "$MAGPIE_NAME/$id" \
+      || cds_die 6 magpie-tier "tier binding failed for $tier"
+  done
+  cds_note "tiers bound. Claude Code now goes through magpie's gateway, so magpie must stay running:"
+  cds_note "  $MAGPIE_BIN daemon install   # or keep the magpie app open"
 }
 
 magpie_main() {
@@ -287,9 +270,15 @@ magpie_main() {
   magpie_explain
 
   if [ "${CDS_MAGPIE_APPLY:-0}" = "1" ]; then
-    magpie_apply
+    magpie_open
   else
     printf '%s\n' "$MAGPIE_LINK"
-    cds_note "nothing was changed. Re-run with --apply to hand this link to magpie."
+    cds_note "nothing was changed. --apply opens this link in magpie to add the provider."
+  fi
+  if [ "${CDS_MAGPIE_SET_TIERS:-0}" = "1" ]; then
+    magpie_bind_tiers
+  elif [ "${CDS_MAGPIE_APPLY:-0}" = "1" ]; then
+    cds_note "tier bindings were not applied. Add --set-tiers to bind them:"
+    magpie_tier_commands | while IFS= read -r line; do [ -n "$line" ] && cds_note "  $line"; done
   fi
 }
