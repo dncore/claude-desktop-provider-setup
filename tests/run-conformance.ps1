@@ -80,6 +80,24 @@ function Compare-Case {
 
     if ($wantOk -eq 'true') {
         [void](Compare-Field 'exit code' '0' "$Code")
+
+        if ((As-Text (Get-Prop $exp 'mode')) -eq 'magpie') {
+            foreach ($f in @('baseUrl','baseUrlHost','authScheme','tokenSource','tokenLength',
+                             'providerName','anthropicRoot','importLink','selectCommand')) {
+                [void](Compare-Field $f (As-Text (Get-Prop $exp $f)) (As-Text (Get-Prop $act $f)))
+            }
+            foreach ($arr in @('models','tierCommands')) {
+                $e = @(Get-Prop $exp $arr)
+                $a = @(Get-Prop $act $arr)
+                if (Compare-Field "$arr count" "$($e.Count)" "$($a.Count)") {
+                    for ($i = 0; $i -lt $e.Count; $i++) {
+                        [void](Compare-Field "$arr[$i]" (As-Text $e[$i]) (As-Text $a[$i]))
+                    }
+                }
+            }
+            return
+        }
+
         foreach ($f in @('baseUrl','baseUrlHost','authScheme','tokenSource','tokenLength',
                          'credentialKind','deploymentMode','helperTtlSec','modelDiscoveryEnabled')) {
             [void](Compare-Field $f (As-Text (Get-Prop $exp $f)) (As-Text (Get-Prop $act $f)))
@@ -172,7 +190,11 @@ function Invoke-Case {
             }
         }
 
-        $runArgs = @('plan')
+        # A fixture opts into the magpie bridge with "mode": "magpie".
+        $expSrc = Join-Path $CaseDir.FullName 'expect.json'
+        $expDoc = [System.IO.File]::ReadAllText($expSrc, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
+        if ((As-Text (Get-Prop $expDoc 'mode')) -eq 'magpie') { $runArgs = @('magpie', '--json') }
+        else { $runArgs = @('plan') }
         $argsSrc = Join-Path $CaseDir.FullName 'args.json'
         if (Test-Path -LiteralPath $argsSrc) {
             $list = [System.IO.File]::ReadAllText($argsSrc, [System.Text.Encoding]::UTF8) | ConvertFrom-Json

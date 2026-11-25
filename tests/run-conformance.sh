@@ -96,9 +96,16 @@ run_case() {
     args+=("--mapping" "$case_dir/mapping.json")
   fi
 
+  # A fixture opts into the magpie bridge with "mode": "magpie" in expect.json.
+  local -a cmd
+  cmd=(plan)
+  if [ "$(jget "$case_dir/expect.json" mode)" = "magpie" ]; then
+    cmd=(magpie --json)
+  fi
+
   out="$tmp/stdout"; err="$tmp/stderr"
   env -i HOME="$home" PATH="$STD_PATH" TMPDIR="$tmp" ${envargs[@]+"${envargs[@]}"} \
-    /bin/bash "$CLI" plan ${args[@]+"${args[@]}"} >"$out" 2>"$err"
+    /bin/bash "$CLI" "${cmd[@]}" ${args[@]+"${args[@]}"} >"$out" 2>"$err"
   code=$?
 
   _compare_case "$case_dir" "$out" "$code" "$home" "$err"
@@ -120,6 +127,26 @@ _compare_case() {
 
   if [ "$want_ok" = "true" ]; then
     check "exit code" "0" "$code"
+
+    if [ "$(jget "$exp" mode)" = "magpie" ]; then
+      for f in baseUrl baseUrlHost authScheme tokenSource tokenLength \
+               providerName anthropicRoot importLink selectCommand; do
+        check "$f" "$(jget "$exp" "$f")" "$(jget "$out" "$f")"
+      done
+      for arr in models tierCommands; do
+        wn="$(jget "$exp" "$arr")"; [ -n "$wn" ] || wn=0
+        an="$(jget "$out" "$arr")"; [ -n "$an" ] || an=0
+        if check "$arr count" "$wn" "$an"; then
+          i=0
+          while [ "$i" -lt "$wn" ]; do
+            check "$arr[$i]" "$(jget "$exp" "$arr.$i")" "$(jget "$out" "$arr.$i")"
+            i=$((i + 1))
+          done
+        fi
+      done
+      return
+    fi
+
     for f in baseUrl baseUrlHost authScheme tokenSource tokenLength \
              credentialKind deploymentMode helperTtlSec modelDiscoveryEnabled; do
       check "$f" "$(jget "$exp" "$f")" "$(jget "$out" "$f")"

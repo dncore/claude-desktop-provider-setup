@@ -1,0 +1,14 @@
+{ "ok": true, "mode": "magpie",
+  "baseUrl": "https://gw.example.com/api/anthropic", "baseUrlHost": "gw.example.com",
+  "authScheme": "bearer", "tokenSource": "settings", "tokenLength": 20,
+  "providerName": "example",
+  "anthropicRoot": "https://gw.example.com/api/anthropic",
+  "importLink": "magpie://import?name=example&anthropic=https%3A%2F%2Fgw.example.com%2Fapi%2Fanthropic&models=claude-sonnet-4-5%2Cclaude-opus-4-5%2Cclaude-haiku-4-5%2Cclaude-fable-5",
+  "selectCommand": "magpie claude example/claude-sonnet-4-5",
+  "models": ["claude-sonnet-4-5", "claude-opus-4-5", "claude-haiku-4-5", "claude-fable-5"],
+  "tierCommands": [
+    "magpie claude sonnet example/claude-sonnet-4-5",
+    "magpie claude opus example/claude-opus-4-5",
+    "magpie claude haiku example/claude-haiku-4-5",
+    "magpie claude fable example/claude-fable-5"
+  ] }
