@@ -7,6 +7,7 @@ set -u
 CDS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$CDS_ROOT/src/macos/lib/common.sh"
 . "$CDS_ROOT/src/macos/lib/core.sh"
+. "$CDS_ROOT/src/macos/lib/magpie.sh"
 . "$CDS_ROOT/src/macos/config-manager.sh"
 . "$CDS_ROOT/src/macos/backup-manager.sh"
 . "$CDS_ROOT/src/macos/setup.sh"
@@ -37,6 +38,7 @@ COMMANDS
   list-backups  List available backups
   uninstall     Remove only what this tool created
   plan          Print the resolved plan as JSON and change nothing
+  magpie        Export this machine's Claude Code provider for magpie
 
 OPTIONS
   --auth-scheme bearer|x-api-key  Choose when both token variables are set
@@ -48,6 +50,10 @@ OPTIONS
   --deployment-mode 3p|any        Hide the Claude.ai sign-in (default: 3p)
   --helper-ttl <seconds>          Credential helper cache lifetime (default: 900)
   --config-name <name>            Name shown in the Claude Desktop config picker
+  --apply                         magpie: hand the import link to magpie now
+  --set-tiers                     magpie: also bind tiers (rewrites Claude Code settings)
+  --provider-name <name>          magpie: provider name (default: from the base URL host)
+  --json                          magpie: print the plan as JSON and change nothing
   --dry-run                       Same as `plan`
   --restart                       Quit and relaunch Claude Desktop afterwards
   --purge                         With uninstall: also delete backups and state
@@ -67,7 +73,7 @@ cli_need_value() {
 cli_parse() {
   while [ $# -gt 0 ]; do
     case "$1" in
-      install|update|verify|diagnose|backup|restore|list-backups|uninstall|plan)
+      install|update|verify|diagnose|backup|restore|list-backups|uninstall|plan|magpie)
         CDS_COMMAND="$1" ;;
       --print-plan) CDS_COMMAND="plan" ;;
       --dry-run)    CDS_COMMAND="plan" ;;
@@ -94,6 +100,12 @@ cli_parse() {
       --config-name)
         shift; cli_need_value "--config-name" $#
         CDS_CONFIG_NAME="$1" ;;
+      --apply)       CDS_MAGPIE_APPLY=1 ;;
+      --set-tiers)   CDS_MAGPIE_SET_TIERS=1 ;;
+      --provider-name)
+        shift; cli_need_value "--provider-name" $#
+        CDS_MAGPIE_NAME="$1" ;;
+      --json)        CDS_PLAN_MODE=1 ;;
       --restart) CDS_RESTART=1 ;;
       --purge)   CDS_PURGE=1 ;;
       --verbose) CDS_VERBOSE=1 ;;
@@ -208,6 +220,7 @@ main() {
   fi
 
   case "$CDS_COMMAND" in
+    magpie)  magpie_main ;;
     plan)
       core_run "$CDS_AUTH_SCHEME_OVERRIDE"
       core_plan_json

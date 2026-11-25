@@ -13,6 +13,7 @@ $script:Root = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSCom
 . (Join-Path $script:Root 'src\windows\lib\Common.ps1')
 Initialize-OutputEncoding
 . (Join-Path $script:Root 'src\windows\lib\Core.ps1')
+. (Join-Path $script:Root 'src\windows\lib\Magpie.ps1')
 . (Join-Path $script:Root 'src\windows\ConfigManager.ps1')
 . (Join-Path $script:Root 'src\windows\BackupManager.ps1')
 . (Join-Path $script:Root 'src\windows\Setup.ps1')
@@ -27,6 +28,11 @@ $script:ConfigName   = ''
 $script:Restart      = $false
 $script:Purge        = $false
 $script:Positional   = ''
+$script:MagpieApplyMode = $false
+$script:MagpieSetTiers  = $false
+$script:MagpieProviderName = ''
+$script:MagpieNoFilter  = $false
+$script:MagpieTierModels = @{}
 $script:RestoreArg   = ''
 
 if ($null -eq $ArgumentList) { $ArgumentList = @() }
@@ -77,7 +83,7 @@ function Get-ArgValue {
 }
 
 function Read-Arguments {
-    $commands = @('install','update','verify','diagnose','backup','restore','list-backups','uninstall','plan')
+    $commands = @('install','update','verify','diagnose','backup','restore','list-backups','uninstall','plan','magpie')
     $i = 0
     while ($i -lt $ArgumentList.Count) {
         $a = $ArgumentList[$i]
@@ -89,6 +95,13 @@ function Read-Arguments {
         elseif ($a -ceq '--allow-http')          { $script:Core.AllowHttp = $true }
         elseif ($a -ceq '--no-model-discovery')  { $script:Core.Discovery = 'false' }
         elseif ($a -ceq '--require-model-discovery') { $script:Core.Discovery = 'true' }
+        elseif ($a -ceq '--apply')     { $script:MagpieApplyMode = $true }
+        elseif ($a -ceq '--set-tiers') { $script:MagpieSetTiers = $true }
+        elseif ($a -ceq '--json')      { $script:State.PlanMode = $true }
+        elseif ($a -ceq '--provider-name') {
+            $script:MagpieProviderName = Get-ArgValue $ArgumentList $i '--provider-name'
+            $i++
+        }
         elseif ($a -ceq '--restart') { $script:Restart = $true }
         elseif ($a -ceq '--purge')   { $script:Purge = $true }
         elseif ($a -ceq '--verbose') { $script:State.Verbose = $true }
@@ -216,6 +229,7 @@ function Invoke-Main {
             $plan = Get-PlanObject
             [Console]::Out.WriteLine((ConvertTo-Json -InputObject $plan -Depth 10 -Compress))
         }
+        'magpie'  { Invoke-MagpieCommand }
         'install' { Setup-Install 'install' }
         'update'  { Setup-Install 'update' }
         'verify'  { exit (Setup-Verify) }
